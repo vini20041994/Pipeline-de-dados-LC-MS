@@ -1,289 +1,342 @@
 # Pipeline de Ingestão de Dados LC-MS
 
-Um pipeline de ingestão de dados **LC-MS** (Liquid Chromatography–Mass Spectrometry) organiza todo o fluxo desde a geração dos espectros até a produção de dados estruturados para análise, anotação de compostos e integração com bases públicas.
+Um pipeline de dados **LC-MS** (Liquid Chromatography–Mass Spectrometry) organiza o fluxo desde os arquivos brutos até a geração de candidatos anotados, enriquecidos e ranqueados para análise científica.
 
-## 1️⃣ Arquitetura geral do pipeline LC-MS
+## 1️⃣ Visão geral do pipeline
 
 ```text
 LC-MS Instrument
-       │
-       ▼
-Raw Data Acquisition
-(.raw / .wiff / .d)
-       │
-       ▼
-Conversão de formato
-(mzML / mzXML)
-       │
-       ▼
-Detecção de picos
-(feature detection)
-       │
-       ▼
-Alinhamento entre amostras
-       │
-       ▼
-Anotação de candidatos
-(libraries)
-       │
-       ▼
-Enriquecimento de dados
-(databases)
-       │
-       ▼
-Ranking de plausibilidade
-(Regra do Top 5)
-       │
-       ▼
-Banco de dados científico
+      │
+      ▼
+1. Data Ingestion
+      │
+      ▼
+2. Format Conversion
+      │
+      ▼
+3. Feature Detection
+      │
+      ▼
+4. Alignment & Normalization
+      │
+      ▼
+5. Candidate Annotation
+      │
+      ▼
+6. Database Enrichment
+      │
+      ▼
+7. Scoring System
+      │
+      ▼
+8. Top 5 Rule
+      │
+      ▼
+9. Storage & Visualization
 ```
 
-## 2️⃣ Etapa 1 — Aquisição de dados
+## 2️⃣ Arquitetura tecnológica
 
-O instrumento LC-MS gera arquivos proprietários.
+Arquitetura moderna de ciência de dados:
 
-### Formatos comuns
+```text
+LC-MS data
+   │
+   ▼
+Data Lake (raw spectra)
+   │
+   ▼
+ETL Pipeline
+   │
+   ▼
+Feature extraction
+   │
+   ▼
+Chemical annotation
+   │
+   ▼
+Knowledge enrichment
+   │
+   ▼
+Ranking engine
+   │
+   ▼
+Database + Dashboard
+```
 
-| Fabricante | Formato |
+### Tecnologias recomendadas
+
+| Função | Ferramenta |
 |---|---|
-| Thermo | `.raw` |
-| Agilent | `.d` |
-| Sciex | `.wiff` |
-| Waters | `.raw` |
+| ingestão | Python |
+| orquestração | Apache Airflow |
+| processamento distribuído | Apache Spark |
+| banco relacional | PostgreSQL |
+| banco de grafos | Neo4j |
+| containerização | Docker |
 
-Esses arquivos contêm, tipicamente:
+## 3️⃣ Etapa 1 — Ingestão de dados
 
-- espectro de massa;
-- intensidade;
-- tempo de retenção;
-- fragmentação MS/MS.
+### Entrada
 
-## 3️⃣ Etapa 2 — Conversão de formato
+arquivos gerados pelo LC-MS.
 
-Os dados são convertidos para formatos abertos.
+### Exemplo
 
-### Ferramenta principal
+```text
+data/raw/
+  sample1.raw
+  sample2.raw
+  sample3.raw
+```
 
-- **ProteoWizard**
+### Script de ingestão
 
-### Formatos de saída
+```python
+import os
+from pathlib import Path
 
-| Formato | Uso |
-|---|---|
-| `mzML` | padrão atual |
-| `mzXML` | legado |
-| `mgf` | espectros MS/MS |
+RAW_DIR = "data/raw"
+
+files = list(Path(RAW_DIR).glob("*"))
+
+for f in files:
+    print("Ingesting:", f)
+```
+
+## 4️⃣ Etapa 2 — Conversão de formato
+
+Arquivos proprietários são convertidos para mzML.
+
+### Ferramenta
+
+ProteoWizard
 
 ### Exemplo
 
 ```bash
-msconvert sample.raw --mzML
+msconvert sample.raw --mzML --outdir data/mzml
 ```
 
-## 4️⃣ Etapa 3 — Detecção de features
-
-Identificação de picos cromatográficos.
-
-### Ferramentas comuns
-
-- **MZmine**
-- **XCMS**
-- **Progenesis QI**
-
-### Exemplo de resultado
-
-| Feature | m/z | RT | Intensidade |
-|---|---:|---:|---:|
-| F1 | 301.216 | 4.3 | 234000 |
-| F2 | 195.087 | 6.7 | 120000 |
-
-## 5️⃣ Etapa 4 — Alinhamento de amostras
-
-Corrige variações entre corridas cromatográficas.
-
-### Resultado esperado
+### Saída
 
 ```text
-Sample 1
-Sample 2
-Sample 3
-        │
-        ▼
-Aligned Feature Table
+data/mzml/sample1.mzML
 ```
 
-### Tabela final
+## 5️⃣ Etapa 3 — Detecção de features
 
-| Feature | m/z | RT | Sample1 | Sample2 | Sample3 |
-|---|---:|---:|---:|---:|---:|
+Detecção de picos cromatográficos.
 
-## 6️⃣ Etapa 5 — Anotação de candidatos
+### Ferramentas
+
+- MZmine
+- XCMS
+
+### Resultado
+
+```text
+feature	m/z	RT	intensity
+```
+
+### Exemplo de tabela
+
+```text
+feature_table.csv
+```
+
+## 6️⃣ Etapa 4 — Alinhamento e normalização
+
+Alinha sinais entre amostras.
+
+### Resultado
+
+| feature | mz | rt | sample1 | sample2 |
+|---|---:|---:|---:|---:|
+
+## 7️⃣ Etapa 5 — Anotação de candidatos
 
 Cada feature gera vários compostos possíveis.
 
-### Consulta em bibliotecas
+### Consulta a bibliotecas
 
-- espectros MS/MS;
-- massa exata;
-- isotopólogos.
-
-### Fontes
-
-- PubChem
-- ChEBI
-- Human Metabolome Database (HMDB)
-- FooDB
+- espectros MS/MS
+- massa exata
+- isotopólogos
 
 ### Exemplo
 
-| Feature | Candidate | Score |
-|---|---|---:|
-| F1 | Compound A | 0.89 |
-| F1 | Compound B | 0.82 |
-| F1 | Compound C | 0.74 |
-
-## 7️⃣ Etapa 6 — Enriquecimento de dados
-
-Cada candidato recebe metadados adicionais.
-
-### Taxonomia
-
-Organismos onde ocorre.
-
-| Compound | Organism |
-|---|---|
-| Quercetin | plantas |
-| Caffeine | Coffea |
-
-### Ontologia química
-
-Obtida via ChEBI ou MeSH Tree.
-
-| Compound | Class |
-|---|---|
-| Quercetin | flavonoid |
-| Caffeine | alkaloid |
-
-### Aplicações
-
-Extraídas de PubChem.
-
-| Compound | Use |
-|---|---|
-| Citric acid | food additive |
-| Acetone | solvent |
-
-## 8️⃣ Etapa 7 — Sistema de pontuação
-
-Score calculado com múltiplos critérios:
-
 ```text
-Score_total =
-mass_accuracy +
-fragmentation +
-taxonomy +
-ontology +
-database_presence
+feature	compound	score
 ```
 
-## 9️⃣ Etapa 8 — Regra do Top 5
+## 8️⃣ Etapa 6 — Enriquecimento com bases públicas
 
-Após ranking:
+Para cada composto candidato, o pipeline consulta:
+
+- PubChem
+- ChEBI
+- Human Metabolome Database
+- FooDB
+
+### Dados coletados
+
+- taxonomia
+- organismos onde o composto ocorre.
+- ontologia química
+- classe química (ex: flavonoid, alkaloid).
+- aplicações
+- uso farmacêutico, alimentar ou industrial.
+
+### Exemplo de chamada API
+
+```python
+import requests
+
+url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/caffeine/JSON"
+response = requests.get(url)
+data = response.json()
+```
+
+## 9️⃣ Etapa 7 — Sistema de pontuação
+
+Score calculado usando múltiplos critérios.
+
+### Exemplo
+
+| critério | peso |
+|---|---:|
+| massa | 0.4 |
+| fragmentação | 0.3 |
+| taxonomia | 0.1 |
+| ontologia | 0.1 |
+| presença em bases | 0.1 |
+
+### Fórmula
 
 ```text
-Candidate ranking
+score_total =
+0.4*score_mass +
+0.3*score_fragment +
+0.1*score_taxonomy +
+0.1*score_ontology +
+0.1*score_database
+```
+
+## 🔟 Etapa 8 — Regra do Top 5
+
+Seleciona apenas os 5 candidatos mais plausíveis.
+
+### Exemplo em Python
+
+```python
+import pandas as pd
+
+df = pd.read_csv("candidates.csv")
+
+top5 = (
+    df.sort_values("score_total", ascending=False)
+      .groupby("feature_id")
+      .head(5)
+)
+```
+
+## 1️⃣1️⃣ Armazenamento em banco de dados
+
+Estrutura recomendada.
+
+### tabela features
+
+```sql
+CREATE TABLE features (
+feature_id SERIAL PRIMARY KEY,
+mz FLOAT,
+retention_time FLOAT
+);
+```
+
+### tabela candidatos
+
+```sql
+CREATE TABLE compound_candidates (
+candidate_id SERIAL PRIMARY KEY,
+feature_id INT,
+compound_name TEXT,
+pubchem_cid INT,
+score_total FLOAT
+);
+```
+
+### tabela metadados
+
+```sql
+CREATE TABLE compound_metadata (
+compound_id INT,
+taxonomy TEXT,
+ontology_class TEXT,
+industrial_use TEXT
+);
+```
+
+## 1️⃣2️⃣ Orquestração do pipeline
+
+Automação com Apache Airflow.
+
+### Fluxo DAG
+
+```text
+ingest_raw_data
       │
-      ▼
-Top 5 compostos
+convert_mzml
+      │
+feature_detection
+      │
+alignment
+      │
+candidate_annotation
+      │
+database_enrichment
+      │
+scoring
+      │
+top5_selection
 ```
 
-Somente esses seguem para validação manual.
-
-## 🔟 Estrutura de banco de dados
-
-### Tabela de features
+## 1️⃣3️⃣ Estrutura de projeto
 
 ```text
-features
--------
-feature_id
-mz
-retention_time
-intensity
-```
-
-### Tabela de candidatos
-
-```text
-compound_candidates
--------
-feature_id
-compound_name
-pubchem_cid
-chebi_id
-score
-```
-
-### Tabela de metadados
-
-```text
-compound_metadata
--------
-compound_id
-taxonomy
-ontology_class
-industrial_use
-```
-
-## 1️⃣1️⃣ Pipeline automatizado
-
-Arquitetura moderna:
-
-```text
-LC-MS
- │
- ▼
-Data Lake
- │
- ▼
-ETL Pipeline
- │
- ▼
-Feature Detection
- │
- ▼
-Candidate Annotation
- │
- ▼
-Database Enrichment
- │
- ▼
-Top 5 Ranking
- │
- ▼
-Scientific Database
-```
-
-### Ferramentas recomendadas
-
-| Tipo | Tecnologia |
-|---|---|
-| ETL | Python |
-| Orquestração | Apache Airflow |
-| Processamento | Apache Spark |
-| Banco | PostgreSQL |
-| Grafos | Neo4j |
-
-## 1️⃣2️⃣ Estrutura ideal de projeto
-
-```text
-lcms_pipeline
+lcms_project
 │
-├── ingestion
-├── preprocessing
-├── feature_detection
-├── annotation
-├── enrichment
-├── ranking
-└── database
+├── data
+│   ├── raw
+│   ├── mzml
+│   └── processed
+│
+├── pipelines
+│   ├── ingestion.py
+│   ├── feature_detection.py
+│   ├── annotation.py
+│   ├── enrichment.py
+│   └── ranking.py
+│
+├── database
+│   └── schema.sql
+│
+└── airflow
+    └── lcms_dag.py
 ```
+
+## 1️⃣4️⃣ Resultado final
+
+O pipeline produz:
+
+- tabela de features
+- sinais detectados
+- tabela de candidatos
+- compostos possíveis
+- ranking
+- Top 5 candidatos por sinal
+- metadados científicos
+- taxonomia
+- ontologia
+- aplicações
