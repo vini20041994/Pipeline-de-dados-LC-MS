@@ -396,3 +396,34 @@ O pipeline produz:
 - taxonomia
 - ontologia
 - aplicações
+
+## 1️⃣5️⃣ API HTTP em Python
+
+Também é possível executar a pipeline por uma API HTTP com **FastAPI**.
+
+### Instalação
+
+```bash
+pip install -r requirements.txt
+```
+
+### Subir servidor
+
+```bash
+uvicorn lcms_project.api:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### Endpoints principais
+
+- `GET /health`
+- `POST /pipeline/ingestion`
+- `POST /pipeline/conversion`
+- `POST /pipeline/feature-detection`
+- `POST /pipeline/alignment`
+- `POST /pipeline/annotation`
+- `POST /pipeline/enrichment`
+- `POST /pipeline/ranking`
+- `POST /pipeline/storage`
+- `POST /pipeline/run` (execução ponta a ponta)
+
+A documentação interativa fica disponível em `http://localhost:8000/docs`.
