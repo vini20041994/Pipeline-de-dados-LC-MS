@@ -92,17 +92,16 @@ data/raw/
 
 ### Script de ingestão
 
-```python
-import os
-from pathlib import Path
-
-RAW_DIR = "data/raw"
-
-files = list(Path(RAW_DIR).glob("*"))
-
-for f in files:
-    print("Ingesting:", f)
+```bash
+python -m lcms_project.pipelines.ingestion \
+  --raw-dir data/raw \
+  --output data/processed/ingestion_manifest.json
 ```
+
+O manifesto de ingestão inclui `sample_id`, caminho completo, tamanho em bytes,
+hash SHA-256 e timestamp UTC para rastreabilidade.
+
+> **Importante:** a ingestão **não** converte automaticamente os arquivos para mzML.
 
 ## 4️⃣ Etapa 2 — Conversão de formato
 
@@ -115,8 +114,13 @@ ProteoWizard
 ### Exemplo
 
 ```bash
-msconvert sample.raw --mzML --outdir data/mzml
+python -m lcms_project.pipelines.conversion \
+  --input-dir data/raw \
+  --output-dir data/mzml \
+  --report data/processed/conversion_report.json
 ```
+
+Use `--dry-run` para validar descoberta e geração de relatório sem executar o `msconvert`.
 
 ### Saída
 
@@ -139,6 +143,16 @@ Detecção de picos cromatográficos.
 feature	m/z	RT	intensity
 ```
 
+### Execução da etapa
+
+```bash
+python -m lcms_project.pipelines.feature_detection \
+  --input data/mzml/points.csv \
+  --output data/processed/feature_table.csv
+```
+
+Entrada esperada (CSV): colunas `mz`, `rt`, `intensity`.
+
 ### Exemplo de tabela
 
 ```text
@@ -147,11 +161,23 @@ feature_table.csv
 
 ## 6️⃣ Etapa 4 — Alinhamento e normalização
 
-Alinha sinais entre amostras.
+Alinha sinais entre amostras e normaliza intensidades por TIC (Total Ion Current),
+escalando cada amostra para a mediana global.
+
+### Execução da etapa
+
+```bash
+python -m lcms_project.pipelines.alignment_normalization \
+  --input data/processed/sample_features.csv \
+  --output-long data/processed/aligned_features_long.csv \
+  --output-matrix data/processed/aligned_feature_matrix.csv
+```
+
+Entrada esperada (CSV): colunas `sample_id`, `mz`, `rt`, `intensity`.
 
 ### Resultado
 
-| feature | mz | rt | sample1 | sample2 |
+| aligned_feature_id | mz | rt | sample1 | sample2 |
 |---|---:|---:|---:|---:|
 
 ## 7️⃣ Etapa 5 — Anotação de candidatos
@@ -163,6 +189,21 @@ Cada feature gera vários compostos possíveis.
 - espectros MS/MS
 - massa exata
 - isotopólogos
+
+### Execução da etapa
+
+```bash
+python -m lcms_project.pipelines.annotation \
+  --features data/processed/feature_table.csv \
+  --library data/reference/compound_library.csv \
+  --output data/processed/candidates.csv
+```
+
+Entrada esperada:
+- features CSV com colunas `feature_id`, `mz`, `rt`
+- biblioteca CSV com colunas `compound_name`, `exact_mass`, `formula`, `source`
+
+O script calcula erro de massa em ppm, atribui `score_mass` e retorna até `top-k` candidatos por feature.
 
 ### Exemplo
 
@@ -179,49 +220,80 @@ Para cada composto candidato, o pipeline consulta:
 - Human Metabolome Database
 - FooDB
 
+### Execução da etapa
+
+```bash
+python -m lcms_project.pipelines.enrichment \
+  --candidates data/processed/candidates.csv \
+  --output data/processed/enriched_candidates.csv \
+  --capabilities-output data/processed/enrichment_source_capabilities.csv
+```
+
+Use `--dry-run` para validar o fluxo sem chamadas HTTP externas.
+
 ### Dados coletados
 
+- identificadores por base (`pubchem_cid`, `chebi_id`, `hmdb_id`, `foodb_id`)
+- metadados básicos (`pubchem_title`)
+- campos de enriquecimento para taxonomia, ontologia, classe química e aplicações
+- fontes com ocorrência encontrada em `sources_found`
+
+### Verificação das fontes para dados coletados
+
+O pipeline gera `enrichment_source_capabilities.csv` com a checagem de cobertura das fontes para:
 - taxonomia
-- organismos onde o composto ocorre.
+- organismos de ocorrência
 - ontologia química
-- classe química (ex: flavonoid, alkaloid).
+- classe química
 - aplicações
-- uso farmacêutico, alimentar ou industrial.
-
-### Exemplo de chamada API
-
-```python
-import requests
-
-url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/caffeine/JSON"
-response = requests.get(url)
-data = response.json()
-```
+- uso farmacêutico/alimentar/industrial
 
 ## 9️⃣ Etapa 7 — Sistema de pontuação
 
-Score calculado usando múltiplos critérios.
+Objetivo: estimar a probabilidade de cada candidato ser o verdadeiro composto,
+combinando evidências espectrais e biológicas no modelo Bayesiano.
 
-### Exemplo
+### Execução da etapa
 
-| critério | peso |
-|---|---:|
-| massa | 0.4 |
-| fragmentação | 0.3 |
-| taxonomia | 0.1 |
-| ontologia | 0.1 |
-| presença em bases | 0.1 |
+```bash
+python -m lcms_project.pipelines.ranking \
+  --input data/processed/enriched_candidates.csv \
+  --output data/processed/scored_candidates.csv \
+  --top-output data/processed/top5_candidates.csv \
+  --sigma-ppm 5 \
+  --alpha-msms 1.2
+```
 
-### Fórmula
+### Modelo matemático executado
+
+Probabilidade posterior por candidato:
 
 ```text
-score_total =
-0.4*score_mass +
-0.3*score_fragment +
-0.1*score_taxonomy +
-0.1*score_ontology +
-0.1*score_database
+P(C_i|D) = [P(D|C_i) * P(C_i)] / P(D)
 ```
+
+Decomposição da evidência:
+
+```text
+P(D|C_i) = P_mass * P_msms * P_isotope
+```
+
+Termos implementados no script:
+
+```text
+error_ppm = ((m_obs - m_theo) / m_theo) * 10^6
+P_mass = exp(-|error_ppm| / sigma)
+P_msms = cosine^alpha
+P_isotope = isotope_similarity   (ou 1 - |isotope_delta|)
+P(C_i) = w_db*DB + w_taxonomy*Taxonomy + w_ontology*Ontology
+Score_raw = P_mass * P_msms * P_isotope * P(C_i)
+Score_norm = Score_raw / sum_j(Score_raw_j)   # por feature
+```
+
+Critérios biológicos no prior `P(C_i)`:
+- DB: presença em múltiplas bases (PubChem, ChEBI, HMDB, FooDB)
+- Taxonomy: ocorrência taxonômica/organismos compatíveis
+- Ontology: classe química/ontologia plausível para a matriz
 
 ## 🔟 Etapa 8 — Regra do Top 5
 
@@ -235,7 +307,7 @@ import pandas as pd
 df = pd.read_csv("candidates.csv")
 
 top5 = (
-    df.sort_values("score_total", ascending=False)
+    df.sort_values("score_norm", ascending=False)
       .groupby("feature_id")
       .head(5)
 )
@@ -243,87 +315,71 @@ top5 = (
 
 ## 1️⃣1️⃣ Armazenamento em banco de dados
 
-Estrutura recomendada.
+A etapa de armazenamento persiste resultados de ranking e enriquecimento em banco relacional.
 
-### tabela features
+### Execução da etapa
 
-```sql
-CREATE TABLE features (
-feature_id SERIAL PRIMARY KEY,
-mz FLOAT,
-retention_time FLOAT
-);
+```bash
+python -m lcms_project.pipelines.storage \
+  --db data/warehouse/lcms.db \
+  --scored data/processed/scored_candidates.csv \
+  --enriched data/processed/enriched_candidates.csv
 ```
 
-### tabela candidatos
+### Esquema lógico (PostgreSQL)
 
-```sql
-CREATE TABLE compound_candidates (
-candidate_id SERIAL PRIMARY KEY,
-feature_id INT,
-compound_name TEXT,
-pubchem_cid INT,
-score_total FLOAT
-);
+Arquivo: `lcms_project/database/schema.sql`
+
+- `features(feature_id, mz, retention_time)`
+- `compound_candidates(feature_id, compound_name, score_raw, score_norm, rank)`
+- `compound_metadata(feature_id, compound_name, taxonomy, organisms, ontology_class, chemical_class, applications, industrial_use, sources_found)`
+
+A implementação da pipeline usa SQLite para execução local e segue o mesmo modelo relacional.
+
+
+## 1️⃣2️⃣ Execução única do pipeline
+
+A orquestração em Airflow foi removida e substituída por um script único de execução fim a fim.
+
+### Script único
+
+```bash
+./run_pipeline.sh \
+  --raw-dir data/raw \
+  --mzml-dir data/mzml \
+  --processed-dir data/processed \
+  --reference-library data/reference/compound_library.csv \
+  --db-path data/warehouse/lcms.db
 ```
 
-### tabela metadados
+Opções úteis:
+- `--dry-run-conversion` para não chamar `msconvert`
+- `--dry-run-enrichment` para não chamar APIs externas
+- `--help` para listar todos os parâmetros
 
-```sql
-CREATE TABLE compound_metadata (
-compound_id INT,
-taxonomy TEXT,
-ontology_class TEXT,
-industrial_use TEXT
-);
-```
-
-## 1️⃣2️⃣ Orquestração do pipeline
-
-Automação com Apache Airflow.
-
-### Fluxo DAG
-
-```text
-ingest_raw_data
-      │
-convert_mzml
-      │
-feature_detection
-      │
-alignment
-      │
-candidate_annotation
-      │
-database_enrichment
-      │
-scoring
-      │
-top5_selection
-```
 
 ## 1️⃣3️⃣ Estrutura de projeto
 
 ```text
-lcms_project
-│
-├── data
-│   ├── raw
-│   ├── mzml
-│   └── processed
-│
-├── pipelines
-│   ├── ingestion.py
-│   ├── feature_detection.py
-│   ├── annotation.py
-│   ├── enrichment.py
-│   └── ranking.py
-│
-├── database
-│   └── schema.sql
-│
-└── airflow
-    └── lcms_dag.py
+.
+├── run_pipeline.sh
+├── README.md
+└── lcms_project
+    ├── data
+    │   ├── raw
+    │   ├── mzml
+    │   └── processed
+    ├── pipelines
+    │   ├── ingestion.py
+    │   ├── conversion.py
+    │   ├── feature_detection.py
+    │   ├── alignment_normalization.py
+    │   ├── annotation.py
+    │   ├── enrichment.py
+    │   ├── ranking.py
+    │   └── storage.py
+    └── database
+        └── schema.sql
 ```
 
 ## 1️⃣4️⃣ Resultado final
