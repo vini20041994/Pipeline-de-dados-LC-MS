@@ -2,7 +2,20 @@
 
 Projeto de ETL para processar planilhas LC-MS, calcular ranking probabilístico Top 5 de candidatos moleculares, enriquecer metadados em bases públicas (PubChem, KEGG, ChEBI, HMDB e MeSH) e persistir em PostgreSQL.
 
-## 1) Organização da documentação
+## 1) Objetivo do projeto
+
+Este repositório implementa um fluxo de dados fim a fim para análises quimioinformáticas baseadas em LC-MS:
+
+1. leitura de planilhas de identificação e abundância;
+2. validação e transformação dos dados;
+3. cálculo de score final e probabilidade posterior por candidato;
+4. seleção dos Top 5 por sinal analítico;
+5. enriquecimento em bases externas;
+6. carga no banco PostgreSQL para exploração analítica.
+
+---
+
+## 2) Organização da documentação
 
 ### Documentação funcional e técnica
 - [`ANALISE_PROJETO_QUIMIOANALYTICS.md`](ANALISE_PROJETO_QUIMIOANALYTICS.md): visão geral técnica e acadêmica do projeto.
@@ -19,40 +32,34 @@ Projeto de ETL para processar planilhas LC-MS, calcular ranking probabilístico 
 - [`main.py`](main.py): orquestrador do pipeline ponta a ponta.
 - [`etl/`](etl): módulos de extração, transformação, score, enriquecimento e carga.
 - [`config/database.py`](config/database.py): configuração de conexão com PostgreSQL.
-- [`scripts/run_pipeline.sh`](scripts/run_pipeline.sh): script automatizado de bootstrap + execução.
+- [`scripts/`](scripts): scripts utilitários para subir stack SQL, aplicar schema e executar ETL.
 - [`docker-compose.yml`](docker-compose.yml): serviços de banco e cliente SQL web.
 
 ---
 
-## 2) Pré-requisitos
+## 3) Pré-requisitos
 
 1. Docker e Docker Compose instalados.
-2. Python 3.10+ instalado (caso execute sem Docker para ETL).
-3. Arquivos de entrada presentes:
+2. Python 3.10+ instalado (para execução local do ETL).
+3. Cliente `psql` instalado (quando usar aplicação de schema via host).
+4. Arquivos de entrada presentes:
    - `data/identificacao.xlsx`
    - `data/abundancia.xlsx`
 
 ---
 
-## 3) Subindo os containers SQL
+## 4) Containers SQL (PostgreSQL + Adminer)
 
-O projeto possui dois serviços no `docker-compose.yml`:
-- **postgres**: banco principal do projeto.
-- **adminer**: cliente SQL web para inspeção/consulta.
+O `docker-compose.yml` contém:
+- **postgres**: banco principal (`localhost:55432`);
+- **adminer**: cliente SQL web (`http://localhost:8080`).
 
-Execute:
-
+### Subir stack SQL
 ```bash
-docker compose up -d
+bash scripts/start_sql_stack.sh
 ```
 
-Verificação:
-
-```bash
-docker compose ps
-```
-
-Acesso ao cliente SQL (Adminer):
+### Acesso ao Adminer
 - URL: `http://localhost:8080`
 - Sistema: `PostgreSQL`
 - Servidor: `postgres`
@@ -60,13 +67,11 @@ Acesso ao cliente SQL (Adminer):
 - Senha: `postgres`
 - Banco: `quimioanalytics`
 
-> Observação: a porta do PostgreSQL está mapeada para `55432` no host.
-
 ---
 
-## 4) Configuração de ambiente
+## 5) Variáveis de ambiente
 
-Defina variáveis para conexão (opcional, já possuem padrão):
+Valores padrão usados pelo projeto:
 
 ```bash
 export DB_USER=postgres
@@ -77,9 +82,14 @@ export DB_NAME=quimioanalytics
 export DB_SCHEMA=quimioanalytics
 ```
 
+Essas variáveis são lidas por:
+- `config/database.py` (conexão SQLAlchemy);
+- `scripts/apply_schema.sh`;
+- `scripts/run_pipeline.sh`.
+
 ---
 
-## 5) Execução passo a passo (manual)
+## 6) Execução passo a passo (manual)
 
 ### Passo 1 — Criar ambiente virtual
 ```bash
@@ -92,13 +102,17 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Passo 3 — Aplicar schema no PostgreSQL
+### Passo 3 — Subir containers SQL
 ```bash
-export PGPASSWORD="$DB_PASSWORD"
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f database_schema_postgresql.sql
+bash scripts/start_sql_stack.sh
 ```
 
-### Passo 4 — Executar o pipeline
+### Passo 4 — Aplicar schema no PostgreSQL
+```bash
+bash scripts/apply_schema.sh
+```
+
+### Passo 5 — Executar pipeline
 ```bash
 python main.py
 ```
@@ -112,48 +126,86 @@ Resultado esperado:
 
 ---
 
-## 6) Execução automatizada (script único)
+## 7) Scripts incluídos (automação)
 
-Para executar tudo de uma vez:
+### `scripts/start_sql_stack.sh`
+Sobe serviços SQL via Docker Compose e exibe status.
+
+```bash
+bash scripts/start_sql_stack.sh
+```
+
+### `scripts/apply_schema.sh`
+Aplica `database_schema_postgresql.sql` no banco configurado.
+
+```bash
+bash scripts/apply_schema.sh
+```
+
+### `scripts/run_pipeline.sh`
+Bootstrap do ETL: valida Python, cria venv, instala dependências (opcional), aplica schema (opcional) e executa pipeline.
 
 ```bash
 bash scripts/run_pipeline.sh
 ```
 
-Esse script:
-1. valida o Python disponível;
-2. cria `.venv` se necessário;
-3. instala dependências;
-4. aplica o schema SQL (opcional);
-5. executa o `main.py`.
+Parâmetros via ambiente:
+- `INSTALL_DEPS=0` desativa reinstalação de dependências;
+- `APPLY_SCHEMA=0` desativa aplicação de schema;
+- `PYTHON_CMD=python3` força interpretador;
+- `IDENT_FILE`/`ABUND_FILE` alteram caminhos de entrada.
 
-Flags úteis por variável de ambiente:
-- `INSTALL_DEPS=0` para não reinstalar dependências;
-- `APPLY_SCHEMA=0` para não reaplicar o schema;
-- `IDENT_FILE=/caminho/identificacao.xlsx` para arquivo customizado;
-- `ABUND_FILE=/caminho/abundancia.xlsx` para arquivo customizado.
-
-Exemplo:
+### `scripts/run_full_stack.sh`
+Executa fluxo completo em sequência: sobe stack SQL, aplica schema e executa ETL.
 
 ```bash
-INSTALL_DEPS=0 APPLY_SCHEMA=0 bash scripts/run_pipeline.sh
+bash scripts/run_full_stack.sh
 ```
 
 ---
 
-## 7) Estrutura resumida do pipeline
+## 8) Fluxo técnico do pipeline (detalhado)
 
-1. **Extract**: leitura de planilhas Excel.
-2. **Transform**: padronização e validação de colunas; normalização de abundância.
-3. **Score**: cálculo de score final, prior, likelihood e posterior.
-4. **Top 5**: seleção dos 5 melhores candidatos por sinal.
-5. **Enrich**: consulta de metadados externos.
-6. **Load**: persistência transacional no PostgreSQL.
+1. **Extract (`etl/extract.py`)**
+   - lê planilhas Excel de identificação e abundância.
+2. **Transform (`etl/transform.py`)**
+   - padroniza nomes de colunas;
+   - valida colunas mínimas obrigatórias;
+   - converte abundância para formato longo por replicata;
+   - mescla identificação e abundância por `signal_id`.
+3. **Score (`etl/score.py`)**
+   - normaliza scores de fragmentação/base/isótopo;
+   - calcula `final_score` ponderado (`w1`, `w2`, `w3`);
+   - estima prior, likelihood e posterior;
+   - cria ranking por sinal.
+4. **Top 5**
+   - filtra os 5 melhores candidatos por sinal.
+5. **Enrichment (`etl/enrich.py`)**
+   - consulta PubChem, KEGG, ChEBI, HMDB e MeSH;
+   - adiciona identificadores e metadados químicos ao dataset.
+6. **Load (`etl/load.py`)**
+   - persiste dados em modo transacional no PostgreSQL.
 
 ---
 
-## 8) Troubleshooting rápido
+## 9) Troubleshooting
 
-- **Erro de conexão no banco**: confirme `DB_HOST/DB_PORT` e se `docker compose ps` mostra `postgres` saudável.
-- **`psql` não encontrado**: instale cliente PostgreSQL local ou aplique schema via container.
-- **Timeout nas APIs de enriquecimento**: o pipeline segue em best-effort; alguns campos podem ficar nulos.
+- **`docker: command not found`**
+  - instale Docker Desktop/Engine e Docker Compose.
+- **`psql: command not found`**
+  - instale cliente PostgreSQL no host.
+- **Erro de conexão com banco**
+  - valide `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`.
+  - confirme stack ativa com `docker compose ps`.
+- **Timeout em APIs externas (enrichment)**
+  - o processo é best-effort; campos podem ficar nulos sem interromper a execução.
+
+---
+
+## 10) Execução recomendada (rápida)
+
+Se o ambiente já possui Docker e `psql`, este comando resolve tudo:
+
+```bash
+bash scripts/run_full_stack.sh
+```
