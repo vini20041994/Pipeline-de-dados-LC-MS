@@ -18,6 +18,10 @@ services:
     image: adminer:4
     container_name: quimioanalytics-sql
     restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DEFAULT_DB: quimioanalytics
+      ADMINER_DEFAULT_USERNAME: postgres
     ports:
       - "8080:8080"
     depends_on:

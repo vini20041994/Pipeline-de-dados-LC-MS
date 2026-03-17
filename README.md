@@ -117,4 +117,9 @@ docker compose down
 
 - **`docker: command not found`**: instale Docker Desktop/Engine com Compose.
 - **Falha ao conectar no banco**: valide `DB_HOST`, `DB_PORT`, `DB_USER` e `DB_PASSWORD`.
+  - Se estiver usando **Adminer** (http://localhost:8080), configure:
+    - **Servidor**: `postgres`
+    - **Porta**: `5432`
+    - **Banco**: `quimioanalytics`
+    - **Usuário/Senha**: `postgres`
 - **Timeout em APIs externas**: tente novamente (enrichment depende de APIs públicas).
