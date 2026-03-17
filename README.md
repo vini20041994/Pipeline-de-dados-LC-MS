@@ -40,7 +40,11 @@ Este repositório implementa um fluxo de dados fim a fim para análises quimioin
 ## 3) Pré-requisitos
 
 1. Docker e Docker Compose instalados.
+<<<<<<< codex/organize-documentation-and-update-readme-rj19ox
 2. Python 3.10+ instalado (para execução local do ETL, sem virtualenv obrigatório).
+=======
+2. Python 3.10+ instalado (para execução local do ETL).
+>>>>>>> main
 3. Cliente `psql` instalado (quando usar aplicação de schema via host).
 4. Arquivos de entrada presentes:
    - `data/identificacao.xlsx`
@@ -60,8 +64,13 @@ bash scripts/run_pipeline.sh
 
 1. Lê variáveis de ambiente de banco e execução.
 2. (Opcional) sobe os containers `postgres` e `adminer` com Docker Compose.
+<<<<<<< codex/organize-documentation-and-update-readme-rj19ox
 3. Valida interpretador Python do host.
 4. (Opcional) instala dependências do `requirements.txt` no host.
+=======
+3. Valida interpretador Python e cria/usa `.venv`.
+4. (Opcional) instala dependências do `requirements.txt`.
+>>>>>>> main
 5. (Opcional) aplica `database_schema_postgresql.sql` usando `psql`.
 6. Valida existência das planilhas de entrada.
 7. Executa `main.py`.
@@ -82,8 +91,13 @@ Todos os parâmetros abaixo podem ser passados por variável de ambiente:
 - `START_DOCKER` (padrão: `1`) — sobe ou não os containers SQL.
 - `INSTALL_DEPS` (padrão: `1`) — instala ou não dependências Python.
 - `APPLY_SCHEMA` (padrão: `1`) — aplica ou não schema SQL.
+<<<<<<< codex/organize-documentation-and-update-readme-rj19ox
 - `PYTHON_CMD` (padrão: `python`) — interpretador Python usado na execução.
 - `PIP_INSTALL_MODE` (padrão: `user`) — `user` instala em `~/.local`; `system` instala global.
+=======
+- `PYTHON_CMD` (padrão: `python`) — interpretador base para criar venv.
+- `VENV_DIR` (padrão: `.venv`) — diretório da virtualenv.
+>>>>>>> main
 - `IDENT_FILE` (padrão: `data/identificacao.xlsx`) — entrada identificação.
 - `ABUND_FILE` (padrão: `data/abundancia.xlsx`) — entrada abundância.
 
@@ -104,11 +118,14 @@ Executar sem reinstalar dependências:
 INSTALL_DEPS=0 bash scripts/run_pipeline.sh
 ```
 
+<<<<<<< codex/organize-documentation-and-update-readme-rj19ox
 Instalar dependências em modo global do sistema:
 ```bash
 PIP_INSTALL_MODE=system bash scripts/run_pipeline.sh
 ```
 
+=======
+>>>>>>> main
 ---
 
 ## 6) Fluxo técnico do pipeline (detalhado)
@@ -188,7 +205,11 @@ PIP_INSTALL_MODE=system bash scripts/run_pipeline.sh
 - **Função no sistema:** script geral único para operar todo o projeto.
 - **Ferramentas utilizadas:**
   - `docker compose`: sobe `postgres` e `adminer`;
+<<<<<<< codex/organize-documentation-and-update-readme-rj19ox
   - `python` + `pip`: execução da aplicação Python sem virtualização obrigatória;
+=======
+  - `python` + `venv` + `pip`: execução da aplicação Python;
+>>>>>>> main
   - `psql`: aplicação do schema SQL.
 
 ---
