@@ -12,6 +12,14 @@ def run_pipeline(
     experiment_name: str = "LC-MS Batch 001",
     instrument: str = "LC-MS",
 ):
+    """Executa o pipeline ETL completo de identificação LC-MS.
+
+    Args:
+        identification_path: Caminho da planilha com candidatos por sinal.
+        abundance_path: Caminho da planilha com abundância por replicata.
+        experiment_name: Nome lógico do experimento salvo no banco.
+        instrument: Instrumento analítico associado ao experimento.
+    """
     print("[1/6] Extraindo planilhas...")
     ident_df = extract_identification(identification_path)
     abundance_df = extract_abundance(abundance_path)
