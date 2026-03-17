@@ -32,22 +32,45 @@ class EnrichmentRecord:
 
 class MultiDBEnrichmentClient:
     def __init__(self, timeout: int = 15):
+        """Inicializa cliente de enriquecimento multi-base.
+
+        Args:
+            timeout: Tempo máximo (s) por requisição HTTP.
+        """
         self.timeout = timeout
         self._cache: dict[str, EnrichmentRecord] = {}
 
     def _get_json(self, url: str, params: dict[str, Any] | None = None) -> Any:
+        """Executa GET e retorna JSON quando status 200.
+
+        Args:
+            url: Endpoint HTTP.
+            params: Parâmetros de query string opcionais.
+        """
         response = requests.get(url, params=params, timeout=self.timeout)
         if response.status_code != 200:
             return None
         return response.json()
 
     def _get_text(self, url: str, params: dict[str, Any] | None = None) -> str | None:
+        """Executa GET e retorna corpo texto quando status 200.
+
+        Args:
+            url: Endpoint HTTP.
+            params: Parâmetros de query string opcionais.
+        """
         response = requests.get(url, params=params, timeout=self.timeout)
         if response.status_code != 200:
             return None
         return response.text
 
     def _pubchem(self, query: str, rec: EnrichmentRecord) -> None:
+        """Consulta PubChem e preenche CID, fórmula e massa exata.
+
+        Args:
+            query: Nome do composto.
+            rec: Objeto mutável de enriquecimento para preencher.
+        """
         payload = self._get_json(PUBCHEM_URL.format(name=requests.utils.quote(query)))
         if not payload:
             return
@@ -60,6 +83,12 @@ class MultiDBEnrichmentClient:
             return
 
     def _kegg(self, query: str, rec: EnrichmentRecord) -> None:
+        """Consulta KEGG e preenche o identificador do composto.
+
+        Args:
+            query: Nome do composto.
+            rec: Objeto mutável de enriquecimento para preencher.
+        """
         text = self._get_text(KEGG_FIND_URL.format(name=requests.utils.quote(query)))
         if not text:
             return
@@ -70,6 +99,12 @@ class MultiDBEnrichmentClient:
         rec.kegg_id = first.split("\t", 1)[0].replace("cpd:", "")
 
     def _chebi(self, query: str, rec: EnrichmentRecord) -> None:
+        """Consulta ChEBI via OLS e preenche o identificador.
+
+        Args:
+            query: Nome do composto.
+            rec: Objeto mutável de enriquecimento para preencher.
+        """
         payload = self._get_json(
             OLS_SEARCH_URL,
             params={"q": query, "ontology": "chebi", "rows": 1},
@@ -84,6 +119,12 @@ class MultiDBEnrichmentClient:
             rec.chebi_id = str(obo_id).replace("CHEBI:", "CHEBI:")
 
     def _hmdb(self, query: str, rec: EnrichmentRecord) -> None:
+        """Consulta HMDB e extrai o primeiro identificador disponível.
+
+        Args:
+            query: Nome do composto.
+            rec: Objeto mutável de enriquecimento para preencher.
+        """
         text = self._get_text(HMDB_SEARCH_URL, params={"query": query, "searcher": "metabolites"})
         if not text:
             return
@@ -93,6 +134,12 @@ class MultiDBEnrichmentClient:
             rec.hmdb_id = match.group(0)
 
     def _mesh(self, query: str, rec: EnrichmentRecord) -> None:
+        """Consulta MeSH e preenche ID e tree number quando disponíveis.
+
+        Args:
+            query: Nome do composto.
+            rec: Objeto mutável de enriquecimento para preencher.
+        """
         payload = self._get_json(
             MESH_LOOKUP_URL,
             params={"label": query, "match": "contains", "limit": 1},
@@ -116,6 +163,14 @@ class MultiDBEnrichmentClient:
                     rec.mesh_tree = tree
 
     def get_compound(self, compound_name: str) -> EnrichmentRecord:
+        """Obtém metadados de um composto com cache local.
+
+        Args:
+            compound_name: Nome textual da molécula.
+
+        Returns:
+            Registro consolidado com dados de múltiplas bases.
+        """
         key = str(compound_name).strip().lower()
         if not key:
             return EnrichmentRecord()
@@ -134,6 +189,14 @@ class MultiDBEnrichmentClient:
 
 
 def enrich_dataframe(df):
+    """Aplica enriquecimento molecular em todas as linhas do DataFrame.
+
+    Args:
+        df: DataFrame contendo a coluna `molecule_name`.
+
+    Returns:
+        Cópia do DataFrame com colunas de enriquecimento adicionadas.
+    """
     client = MultiDBEnrichmentClient()
 
     pubchem_cids = []
