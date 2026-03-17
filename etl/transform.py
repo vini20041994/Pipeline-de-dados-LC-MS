@@ -1,3 +1,15 @@
+"""Camada de transformação e validação dos dados de entrada.
+
+Funcionamento:
+- Padroniza nomes de colunas para reduzir inconsistências entre planilhas.
+- Valida colunas obrigatórias do arquivo de identificação.
+- Converte a planilha de abundância para formato longo (long format).
+- Une identificação e abundância por `signal_id`.
+
+Bibliotecas utilizadas:
+- pandas: operações de limpeza, melt e merge.
+"""
+
 import pandas as pd
 
 

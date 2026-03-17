@@ -1,5 +1,18 @@
 from __future__ import annotations
 
+"""Camada de carga transacional no PostgreSQL.
+
+Funcionamento:
+- Recebe DataFrame enriquecido e persiste entidades no modelo relacional.
+- Controla inserções em cadeia: experimento, amostra, sinal, candidato, score e probabilidade.
+- Utiliza cache local em memória para reduzir duplicações durante a carga.
+- Executa em transação única por meio de `engine.begin()`.
+
+Bibliotecas utilizadas:
+- pandas: iteração e validações auxiliares em DataFrame.
+- sqlalchemy.text: execução de SQL parametrizado com segurança.
+"""
+
 import pandas as pd
 from sqlalchemy import text
 

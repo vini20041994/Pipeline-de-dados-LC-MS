@@ -1,3 +1,16 @@
+"""Camada de cálculo de score e probabilidade para candidatos moleculares.
+
+Funcionamento:
+- Normaliza scores de fragmentação, base e isótopo para escala comparável.
+- Calcula score final ponderado.
+- Estima prior, likelihood, posterior e ranking por sinal analítico.
+- Disponibiliza filtro Top 5 por sinal.
+
+Bibliotecas utilizadas:
+- numpy: operações numéricas vetorizadas e tratamento de casos limites.
+- pandas: agrupamentos, transformações e ranking.
+"""
+
 import numpy as np
 import pandas as pd
 

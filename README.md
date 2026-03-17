@@ -130,7 +130,65 @@ INSTALL_DEPS=0 bash scripts/run_pipeline.sh
 
 ---
 
-## 7) Acesso SQL (Adminer)
+## 7) Descrição detalhada dos códigos e bibliotecas utilizadas
+
+### `main.py`
+- **Função no sistema:** orquestra todo o pipeline ponta a ponta (extract → transform → score → enrich → load).
+- **Bibliotecas/módulos utilizados:**
+  - `etl.extract`: leitura das planilhas de entrada;
+  - `etl.transform`: validação e transformação dos dados;
+  - `etl.score`: cálculo de score/probabilidade/ranking;
+  - `etl.enrich`: enriquecimento em bases externas;
+  - `etl.load`: persistência no PostgreSQL;
+  - `config.database`: criação da engine SQLAlchemy.
+
+### `etl/extract.py`
+- **Função no sistema:** camada de extração dos arquivos Excel.
+- **Bibliotecas utilizadas:**
+  - `pandas`: `read_excel` para ingestão tabular;
+  - `pathlib`: tipagem e manipulação de caminhos.
+
+### `etl/transform.py`
+- **Função no sistema:** limpeza de colunas, validação mínima, conversão para long format e merge.
+- **Bibliotecas utilizadas:**
+  - `pandas`: `dropna`, `melt`, `merge` e transformações tabulares.
+
+### `etl/score.py`
+- **Função no sistema:** cálculo matemático do score final e da probabilidade posterior; geração de ranking.
+- **Bibliotecas utilizadas:**
+  - `numpy`: operações numéricas vetorizadas (`zeros`, `where`, etc.);
+  - `pandas`: agrupamento por sinal, transformação e ranking.
+
+### `etl/enrich.py`
+- **Função no sistema:** enriquecimento de candidatos moleculares via APIs públicas.
+- **Bibliotecas utilizadas:**
+  - `requests`: chamadas HTTP para PubChem, KEGG, OLS/ChEBI, HMDB e MeSH;
+  - `tqdm`: barra de progresso no enriquecimento em lote;
+  - `dataclasses`: modelagem do `EnrichmentRecord`;
+  - `re`: extração de padrões textuais (ex.: identificadores HMDB).
+
+### `etl/load.py`
+- **Função no sistema:** carga transacional no banco relacional.
+- **Bibliotecas utilizadas:**
+  - `sqlalchemy` (`text`): SQL parametrizado para inserts/updates;
+  - `pandas`: iteração e verificações de nulos no DataFrame.
+
+### `config/database.py`
+- **Função no sistema:** montagem da URL do banco e criação de engine com `search_path`.
+- **Bibliotecas utilizadas:**
+  - `os`: leitura de variáveis de ambiente;
+  - `sqlalchemy`: criação de `Engine`.
+
+### `scripts/run_pipeline.sh`
+- **Função no sistema:** script geral único para operar todo o projeto.
+- **Ferramentas utilizadas:**
+  - `docker compose`: sobe `postgres` e `adminer`;
+  - `python` + `venv` + `pip`: execução da aplicação Python;
+  - `psql`: aplicação do schema SQL.
+
+---
+
+## 8) Acesso SQL (Adminer)
 
 Quando `START_DOCKER=1`, o script sobe o Adminer automaticamente.
 
@@ -143,7 +201,7 @@ Quando `START_DOCKER=1`, o script sobe o Adminer automaticamente.
 
 ---
 
-## 8) Troubleshooting
+## 9) Troubleshooting
 
 - **`docker: command not found`**
   - instale Docker Desktop/Engine e Docker Compose;

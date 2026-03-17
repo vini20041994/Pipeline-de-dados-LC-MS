@@ -15,6 +15,12 @@ set -euo pipefail
 # 6) executa o pipeline Python (main.py).
 #
 # Objetivo: manter apenas um ponto de entrada para setup + execução.
+#
+# Dependências/ferramentas utilizadas pelo script:
+# - docker compose: para subir PostgreSQL e Adminer (quando START_DOCKER=1)
+# - python/python3 + venv: para ambiente isolado da aplicação
+# - pip: para instalação de dependências do requirements.txt
+# - psql: para aplicação do schema SQL (quando APPLY_SCHEMA=1)
 # -----------------------------------------------------
 
 DB_USER="${DB_USER:-postgres}"

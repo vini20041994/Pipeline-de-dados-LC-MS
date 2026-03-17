@@ -1,5 +1,21 @@
 from __future__ import annotations
 
+"""Camada de enriquecimento molecular com múltiplas bases públicas.
+
+Funcionamento:
+- Consulta APIs externas (PubChem, KEGG, ChEBI/OLS, HMDB e MeSH).
+- Consolida identificadores e propriedades químicas em um registro único.
+- Usa cache em memória por nome de composto para reduzir chamadas repetidas.
+- Enriquecimento é best-effort: falhas de API não interrompem o pipeline.
+
+Bibliotecas utilizadas:
+- dataclasses: estrutura tipada para registro de enriquecimento.
+- typing: tipos auxiliares (`Any`).
+- re: extração de padrões (HMDB) em conteúdo textual.
+- requests: chamadas HTTP para APIs externas.
+- tqdm: barra de progresso durante enriquecimento em lote.
+"""
+
 from dataclasses import dataclass
 from typing import Any
 import re

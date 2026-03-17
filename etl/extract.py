@@ -1,3 +1,14 @@
+"""Camada de extração de dados tabulares (Excel).
+
+Funcionamento:
+- Fornece funções simples para leitura dos arquivos de entrada do ETL.
+- Mantém a etapa de extração desacoplada das regras de transformação.
+
+Bibliotecas utilizadas:
+- pathlib.Path: tipagem de caminho de arquivo.
+- pandas: leitura de planilhas via `read_excel`.
+"""
+
 from pathlib import Path
 import pandas as pd
 

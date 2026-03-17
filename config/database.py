@@ -1,3 +1,15 @@
+"""Configuração de conexão com PostgreSQL via SQLAlchemy.
+
+Funcionamento:
+- Lê variáveis de ambiente de conexão (usuário, senha, host, porta e banco).
+- Gera URL de conexão em formato compatível com SQLAlchemy.
+- Cria `Engine` com `search_path` configurável para o schema do projeto.
+
+Bibliotecas utilizadas:
+- os: leitura de variáveis de ambiente.
+- sqlalchemy.create_engine: criação de engine de conexão.
+"""
+
 import os
 from sqlalchemy import create_engine
 
