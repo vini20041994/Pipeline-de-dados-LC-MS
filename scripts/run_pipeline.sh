@@ -33,11 +33,31 @@ echo "  DB_NAME=${DB_NAME}"
 echo "  DB_SCHEMA=${DB_SCHEMA}"
 
 echo "[INFO] Validando Python..."
-command -v python >/dev/null 2>&1 || { echo "[ERRO] python não encontrado"; exit 1; }
+PYTHON_CMD="${PYTHON_CMD:-python}"
+if ! command -v "${PYTHON_CMD}" >/dev/null 2>&1; then
+  echo "[WARN] ${PYTHON_CMD} não encontrado, tentando python3..."
+  PYTHON_CMD="python3"
+  if ! command -v "${PYTHON_CMD}" >/dev/null 2>&1; then
+    echo "[ERRO] Nenhum interpretador Python encontrado (python ou python3)"
+    exit 1
+  fi
+fi
+
+echo "[INFO] Usando Python: ${PYTHON_CMD}"
+
+VENV_DIR="${VENV_DIR:-.venv}"
+if [[ ! -d "${VENV_DIR}" ]]; then
+  echo "[INFO] Criando virtualenv em ${VENV_DIR}..."
+  "${PYTHON_CMD}" -m venv "${VENV_DIR}"
+fi
+
+PYTHON_CMD="${VENV_DIR}/bin/python"
+PIP_CMD="${VENV_DIR}/bin/pip"
+echo "[INFO] Usando virtualenv python: ${PYTHON_CMD}"
 
 if [[ "${INSTALL_DEPS}" == "1" ]]; then
   echo "[INFO] Instalando dependências..."
-  python -m pip install -r requirements.txt
+  "${PIP_CMD}" install -r requirements.txt
 fi
 
 if [[ "${APPLY_SCHEMA}" == "1" ]]; then
@@ -58,6 +78,6 @@ fi
 [[ -f "${ABUND_FILE}" ]] || { echo "[ERRO] Arquivo não encontrado: ${ABUND_FILE}"; exit 1; }
 
 echo "[INFO] Executando pipeline..."
-python main.py
+"${PYTHON_CMD}" main.py
 
 echo "[OK] Pipeline concluído."
