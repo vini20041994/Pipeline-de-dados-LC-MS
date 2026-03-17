@@ -1,17 +1,43 @@
 from __future__ import annotations
 
+"""Camada de carga transacional no PostgreSQL.
+
+Funcionamento:
+- Recebe DataFrame enriquecido e persiste entidades no modelo relacional.
+- Controla inserções em cadeia: experimento, amostra, sinal, candidato, score e probabilidade.
+- Utiliza cache local em memória para reduzir duplicações durante a carga.
+- Executa em transação única por meio de `engine.begin()`.
+
+Bibliotecas utilizadas:
+- pandas: iteração e validações auxiliares em DataFrame.
+- sqlalchemy.text: execução de SQL parametrizado com segurança.
+"""
+
 import pandas as pd
 from sqlalchemy import text
 
 
 class Loader:
     def __init__(self, engine, experiment_name: str, instrument: str | None = None, description: str | None = None):
+        """Configura o carregador para persistência no PostgreSQL.
+
+        Args:
+            engine: SQLAlchemy Engine conectado ao banco.
+            experiment_name: Nome do experimento para a tabela `experiment`.
+            instrument: Instrumento analítico do experimento.
+            description: Descrição opcional do experimento.
+        """
         self.engine = engine
         self.experiment_name = experiment_name
         self.instrument = instrument
         self.description = description
 
     def load(self, df: pd.DataFrame) -> None:
+        """Persiste dados processados no schema relacional do projeto.
+
+        Args:
+            df: DataFrame final com sinais, candidatos, score e enriquecimento.
+        """
         with self.engine.begin() as conn:
             experiment_id = conn.execute(
                 text(

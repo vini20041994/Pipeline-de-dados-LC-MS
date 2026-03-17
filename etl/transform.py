@@ -1,3 +1,15 @@
+"""Camada de transformação e validação dos dados de entrada.
+
+Funcionamento:
+- Padroniza nomes de colunas para reduzir inconsistências entre planilhas.
+- Valida colunas obrigatórias do arquivo de identificação.
+- Converte a planilha de abundância para formato longo (long format).
+- Une identificação e abundância por `signal_id`.
+
+Bibliotecas utilizadas:
+- pandas: operações de limpeza, melt e merge.
+"""
+
 import pandas as pd
 
 
@@ -16,12 +28,28 @@ REQUIRED_IDENT_COLUMNS = {
 
 
 def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Padroniza nomes de colunas para facilitar o pipeline.
+
+    Args:
+        df: DataFrame de entrada com colunas possivelmente inconsistentes.
+
+    Returns:
+        Cópia do DataFrame com colunas em minúsculo e sem espaços extras.
+    """
     out = df.copy()
     out.columns = out.columns.str.strip().str.lower()
     return out
 
 
 def clean_identification(df: pd.DataFrame) -> pd.DataFrame:
+    """Valida e higieniza a planilha de identificação.
+
+    Args:
+        df: DataFrame bruto de identificação.
+
+    Returns:
+        DataFrame normalizado e sem linhas incompletas essenciais.
+    """
     out = _normalize_columns(df)
 
     missing = REQUIRED_IDENT_COLUMNS - set(out.columns)
@@ -33,6 +61,14 @@ def clean_identification(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def transform_abundance(df: pd.DataFrame) -> pd.DataFrame:
+    """Converte a planilha de abundância para formato longo (long format).
+
+    Args:
+        df: DataFrame bruto de abundância com colunas por replicata.
+
+    Returns:
+        DataFrame com uma linha por sinal/replicata.
+    """
     out = _normalize_columns(df)
     if "signal_id" not in out.columns:
         raise ValueError("Abundance sheet must contain 'signal_id' column")
@@ -55,5 +91,14 @@ def transform_abundance(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def merge_datasets(ident_df: pd.DataFrame, abundance_df: pd.DataFrame) -> pd.DataFrame:
+    """Faz o join entre candidatos identificados e abundância.
+
+    Args:
+        ident_df: Dados de identificação já higienizados.
+        abundance_df: Dados de abundância em formato longo.
+
+    Returns:
+        DataFrame unificado pronto para etapa de score.
+    """
     merged = ident_df.merge(abundance_df, on="signal_id", how="left")
     return merged

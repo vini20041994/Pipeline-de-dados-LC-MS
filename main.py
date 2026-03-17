@@ -1,3 +1,17 @@
+"""Orquestrador principal do pipeline QuimioAnalytics.
+
+Funcionamento:
+1) Extrai planilhas de identificação e abundância.
+2) Executa limpeza/transformação e merge dos dados.
+3) Calcula score probabilístico e seleciona Top 5 por sinal.
+4) Enriquece candidatos com metadados de bases públicas.
+5) Persiste o resultado no PostgreSQL.
+
+Bibliotecas utilizadas:
+- Módulos locais: etl.extract, etl.transform, etl.score, etl.enrich, etl.load.
+- Módulo local de configuração: config.database.
+"""
+
 from etl.extract import extract_abundance, extract_identification
 from etl.transform import clean_identification, merge_datasets, transform_abundance
 from etl.score import calculate_score, select_top5
@@ -12,6 +26,14 @@ def run_pipeline(
     experiment_name: str = "LC-MS Batch 001",
     instrument: str = "LC-MS",
 ):
+    """Executa o pipeline ETL completo de identificação LC-MS.
+
+    Args:
+        identification_path: Caminho da planilha com candidatos por sinal.
+        abundance_path: Caminho da planilha com abundância por replicata.
+        experiment_name: Nome lógico do experimento salvo no banco.
+        instrument: Instrumento analítico associado ao experimento.
+    """
     print("[1/6] Extraindo planilhas...")
     ident_df = extract_identification(identification_path)
     abundance_df = extract_abundance(abundance_path)
