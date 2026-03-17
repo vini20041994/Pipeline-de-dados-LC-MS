@@ -1,8 +1,29 @@
+"""Camada de cálculo de score e probabilidade para candidatos moleculares.
+
+Funcionamento:
+- Normaliza scores de fragmentação, base e isótopo para escala comparável.
+- Calcula score final ponderado.
+- Estima prior, likelihood, posterior e ranking por sinal analítico.
+- Disponibiliza filtro Top 5 por sinal.
+
+Bibliotecas utilizadas:
+- numpy: operações numéricas vetorizadas e tratamento de casos limites.
+- pandas: agrupamentos, transformações e ranking.
+"""
+
 import numpy as np
 import pandas as pd
 
 
 def normalize(series: pd.Series) -> pd.Series:
+    """Normaliza uma série numérica no intervalo [0, 1].
+
+    Args:
+        series: Série contendo valores de score.
+
+    Returns:
+        Série normalizada, ou zeros quando não há variação.
+    """
     series = pd.to_numeric(series, errors="coerce")
     min_v = series.min()
     max_v = series.max()
@@ -12,7 +33,14 @@ def normalize(series: pd.Series) -> pd.Series:
 
 
 def _safe_prior(series: pd.Series) -> pd.Series:
-    """Generate non-zero priors normalized within each signal."""
+    """Gera prior não nulo e normalizado por sinal.
+
+    Args:
+        series: Série de score base normalizado por candidato.
+
+    Returns:
+        Série de probabilidades a priori com soma 1 por grupo.
+    """
     s = pd.to_numeric(series, errors="coerce").fillna(0.0)
     s = s + 1e-9
     total = s.sum()
@@ -40,6 +68,15 @@ def calculate_score(
     - Priors P(C_i) are estimated from normalized base score within each signal.
     - Likelihood term uses multiplicative evidences from normalized metrics.
     - Evidence denominator is computed per signal to produce posterior probabilities.
+
+    Args:
+        df: DataFrame com scores de fragmentação, base e isótopo.
+        w1: Peso aplicado ao score de fragmentação normalizado.
+        w2: Peso aplicado ao score base normalizado.
+        w3: Peso aplicado ao score isotópico normalizado.
+
+    Returns:
+        DataFrame com colunas de score final, probabilidade e ranking.
     """
     out = df.copy()
 
@@ -79,4 +116,12 @@ def calculate_score(
 
 
 def select_top5(df: pd.DataFrame) -> pd.DataFrame:
+    """Filtra os candidatos Top 5 por sinal.
+
+    Args:
+        df: DataFrame com coluna `ranking` já calculada.
+
+    Returns:
+        Apenas linhas com ranking menor ou igual a 5.
+    """
     return df[df["ranking"] <= 5].copy()
