@@ -32,8 +32,8 @@ Este repositório implementa um fluxo de dados fim a fim para análises quimioin
 - [`main.py`](main.py): orquestrador do pipeline ponta a ponta.
 - [`etl/`](etl): módulos de extração, transformação, score, enriquecimento e carga.
 - [`config/database.py`](config/database.py): configuração de conexão com PostgreSQL.
-- [`scripts/`](scripts): scripts utilitários para subir stack SQL, aplicar schema e executar ETL.
-- [`docker-compose.yml`](docker-compose.yml): serviços de banco e cliente SQL web.
+- [`scripts/run_pipeline.sh`](scripts/run_pipeline.sh): **único script geral** para setup e execução.
+- [`docker-compose.yml`](docker-compose.yml): serviços `postgres` e `adminer`.
 
 ---
 
@@ -48,123 +48,65 @@ Este repositório implementa um fluxo de dados fim a fim para análises quimioin
 
 ---
 
-## 4) Containers SQL (PostgreSQL + Adminer)
+## 4) Script único de execução (geral)
 
-O `docker-compose.yml` contém:
-- **postgres**: banco principal (`localhost:55432`);
-- **adminer**: cliente SQL web (`http://localhost:8080`).
-
-### Subir stack SQL
-```bash
-bash scripts/start_sql_stack.sh
-```
-
-### Acesso ao Adminer
-- URL: `http://localhost:8080`
-- Sistema: `PostgreSQL`
-- Servidor: `postgres`
-- Usuário: `postgres`
-- Senha: `postgres`
-- Banco: `quimioanalytics`
-
----
-
-## 5) Variáveis de ambiente
-
-Valores padrão usados pelo projeto:
-
-```bash
-export DB_USER=postgres
-export DB_PASSWORD=postgres
-export DB_HOST=localhost
-export DB_PORT=55432
-export DB_NAME=quimioanalytics
-export DB_SCHEMA=quimioanalytics
-```
-
-Essas variáveis são lidas por:
-- `config/database.py` (conexão SQLAlchemy);
-- `scripts/apply_schema.sh`;
-- `scripts/run_pipeline.sh`.
-
----
-
-## 6) Execução passo a passo (manual)
-
-### Passo 1 — Criar ambiente virtual
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
-
-### Passo 2 — Instalar dependências
-```bash
-pip install -r requirements.txt
-```
-
-### Passo 3 — Subir containers SQL
-```bash
-bash scripts/start_sql_stack.sh
-```
-
-### Passo 4 — Aplicar schema no PostgreSQL
-```bash
-bash scripts/apply_schema.sh
-```
-
-### Passo 5 — Executar pipeline
-```bash
-python main.py
-```
-
-Resultado esperado:
-- criação do experimento;
-- carga de amostras/sinais/replicatas;
-- cálculo de score e probabilidade;
-- ranking Top 5 por sinal;
-- enriquecimento molecular e persistência no banco.
-
----
-
-## 7) Scripts incluídos (automação)
-
-### `scripts/start_sql_stack.sh`
-Sobe serviços SQL via Docker Compose e exibe status.
-
-```bash
-bash scripts/start_sql_stack.sh
-```
-
-### `scripts/apply_schema.sh`
-Aplica `database_schema_postgresql.sql` no banco configurado.
-
-```bash
-bash scripts/apply_schema.sh
-```
-
-### `scripts/run_pipeline.sh`
-Bootstrap do ETL: valida Python, cria venv, instala dependências (opcional), aplica schema (opcional) e executa pipeline.
+Para manter a operação simples, o projeto utiliza apenas **um script principal**:
 
 ```bash
 bash scripts/run_pipeline.sh
 ```
 
-Parâmetros via ambiente:
-- `INSTALL_DEPS=0` desativa reinstalação de dependências;
-- `APPLY_SCHEMA=0` desativa aplicação de schema;
-- `PYTHON_CMD=python3` força interpretador;
-- `IDENT_FILE`/`ABUND_FILE` alteram caminhos de entrada.
+### O que esse script faz, em detalhes
 
-### `scripts/run_full_stack.sh`
-Executa fluxo completo em sequência: sobe stack SQL, aplica schema e executa ETL.
+1. Lê variáveis de ambiente de banco e execução.
+2. (Opcional) sobe os containers `postgres` e `adminer` com Docker Compose.
+3. Valida interpretador Python e cria/usa `.venv`.
+4. (Opcional) instala dependências do `requirements.txt`.
+5. (Opcional) aplica `database_schema_postgresql.sql` usando `psql`.
+6. Valida existência das planilhas de entrada.
+7. Executa `main.py`.
 
+---
+
+## 5) Parâmetros do script geral
+
+Todos os parâmetros abaixo podem ser passados por variável de ambiente:
+
+- `DB_USER` (padrão: `postgres`)
+- `DB_PASSWORD` (padrão: `postgres`)
+- `DB_HOST` (padrão: `localhost`)
+- `DB_PORT` (padrão: `55432`)
+- `DB_NAME` (padrão: `quimioanalytics`)
+- `DB_SCHEMA` (padrão: `quimioanalytics`)
+- `COMPOSE_FILE` (padrão: `docker-compose.yml`)
+- `START_DOCKER` (padrão: `1`) — sobe ou não os containers SQL.
+- `INSTALL_DEPS` (padrão: `1`) — instala ou não dependências Python.
+- `APPLY_SCHEMA` (padrão: `1`) — aplica ou não schema SQL.
+- `PYTHON_CMD` (padrão: `python`) — interpretador base para criar venv.
+- `VENV_DIR` (padrão: `.venv`) — diretório da virtualenv.
+- `IDENT_FILE` (padrão: `data/identificacao.xlsx`) — entrada identificação.
+- `ABUND_FILE` (padrão: `data/abundancia.xlsx`) — entrada abundância.
+
+### Exemplos práticos
+
+Execução completa (recomendada):
 ```bash
-bash scripts/run_full_stack.sh
+bash scripts/run_pipeline.sh
+```
+
+Executar ETL sem subir containers e sem reaplicar schema:
+```bash
+START_DOCKER=0 APPLY_SCHEMA=0 bash scripts/run_pipeline.sh
+```
+
+Executar sem reinstalar dependências:
+```bash
+INSTALL_DEPS=0 bash scripts/run_pipeline.sh
 ```
 
 ---
 
-## 8) Fluxo técnico do pipeline (detalhado)
+## 6) Fluxo técnico do pipeline (detalhado)
 
 1. **Extract (`etl/extract.py`)**
    - lê planilhas Excel de identificação e abundância.
@@ -188,24 +130,28 @@ bash scripts/run_full_stack.sh
 
 ---
 
-## 9) Troubleshooting
+## 7) Acesso SQL (Adminer)
 
-- **`docker: command not found`**
-  - instale Docker Desktop/Engine e Docker Compose.
-- **`psql: command not found`**
-  - instale cliente PostgreSQL no host.
-- **Erro de conexão com banco**
-  - valide `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`.
-  - confirme stack ativa com `docker compose ps`.
-- **Timeout em APIs externas (enrichment)**
-  - o processo é best-effort; campos podem ficar nulos sem interromper a execução.
+Quando `START_DOCKER=1`, o script sobe o Adminer automaticamente.
+
+- URL: `http://localhost:8080`
+- Sistema: `PostgreSQL`
+- Servidor: `postgres`
+- Usuário: `postgres`
+- Senha: `postgres`
+- Banco: `quimioanalytics`
 
 ---
 
-## 10) Execução recomendada (rápida)
+## 8) Troubleshooting
 
-Se o ambiente já possui Docker e `psql`, este comando resolve tudo:
-
-```bash
-bash scripts/run_full_stack.sh
-```
+- **`docker: command not found`**
+  - instale Docker Desktop/Engine e Docker Compose;
+  - ou execute com `START_DOCKER=0` se já tiver banco externo disponível.
+- **`psql: command not found`**
+  - instale cliente PostgreSQL no host;
+  - ou execute com `APPLY_SCHEMA=0` se o schema já estiver aplicado.
+- **Erro de conexão com banco**
+  - valide `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`.
+- **Timeout em APIs externas (enrichment)**
+  - processo best-effort; campos podem ficar nulos sem interromper execução.

@@ -2,13 +2,19 @@
 set -euo pipefail
 
 # -----------------------------------------------------
-# QuimioAnalytics - Bootstrap + Run ETL
+# QuimioAnalytics - Script geral de execução (SQL + ETL)
 # -----------------------------------------------------
-# O script:
-# 1) valida Python
-# 2) instala dependências
-# 3) (opcional) aplica schema SQL no PostgreSQL
-# 4) executa o pipeline Python
+# Este script centraliza TODO o fluxo operacional do projeto.
+#
+# Etapas executadas (comportamento padrão):
+# 1) sobe os containers SQL (PostgreSQL + Adminer) via Docker Compose;
+# 2) valida o interpretador Python e prepara virtualenv;
+# 3) instala dependências Python (opcional);
+# 4) aplica o schema SQL no PostgreSQL (opcional);
+# 5) valida arquivos de entrada do ETL;
+# 6) executa o pipeline Python (main.py).
+#
+# Objetivo: manter apenas um ponto de entrada para setup + execução.
 # -----------------------------------------------------
 
 DB_USER="${DB_USER:-postgres}"
@@ -20,6 +26,9 @@ DB_SCHEMA="${DB_SCHEMA:-quimioanalytics}"
 
 APPLY_SCHEMA="${APPLY_SCHEMA:-1}"     # 1=aplica schema, 0=não aplica
 INSTALL_DEPS="${INSTALL_DEPS:-1}"     # 1=instala deps, 0=não instala
+START_DOCKER="${START_DOCKER:-1}"     # 1=sobe containers SQL, 0=não sobe
+
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 
 IDENT_FILE="${IDENT_FILE:-data/identificacao.xlsx}"
 ABUND_FILE="${ABUND_FILE:-data/abundancia.xlsx}"
@@ -31,6 +40,16 @@ echo "  DB_HOST=${DB_HOST}"
 echo "  DB_PORT=${DB_PORT}"
 echo "  DB_NAME=${DB_NAME}"
 echo "  DB_SCHEMA=${DB_SCHEMA}"
+echo "  START_DOCKER=${START_DOCKER}"
+echo "  APPLY_SCHEMA=${APPLY_SCHEMA}"
+echo "  INSTALL_DEPS=${INSTALL_DEPS}"
+
+if [[ "${START_DOCKER}" == "1" ]]; then
+  echo "[INFO] Iniciando containers SQL (PostgreSQL + Adminer)..."
+  command -v docker >/dev/null 2>&1 || { echo "[ERRO] docker não encontrado"; exit 1; }
+  docker compose -f "${COMPOSE_FILE}" up -d postgres adminer
+  docker compose -f "${COMPOSE_FILE}" ps
+fi
 
 echo "[INFO] Validando Python..."
 PYTHON_CMD="${PYTHON_CMD:-python}"
@@ -61,7 +80,7 @@ if [[ "${INSTALL_DEPS}" == "1" ]]; then
 fi
 
 if [[ "${APPLY_SCHEMA}" == "1" ]]; then
-  echo "[INFO] Aplicando schema PostgreSQL..."
+  echo "[INFO] Aplicando schema PostgreSQL (database_schema_postgresql.sql)..."
   command -v psql >/dev/null 2>&1 || { echo "[ERRO] psql não encontrado"; exit 1; }
 
   export PGPASSWORD="${DB_PASSWORD}"
