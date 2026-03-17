@@ -15,6 +15,7 @@ Repositório com materiais de análise, modelagem de dados e implementação ETL
 - [`etl/`](etl): módulos de extração, transformação, score, enriquecimento e carga.
 - [`config/database.py`](config/database.py): configuração de conexão com PostgreSQL.
 - [`requirements.txt`](requirements.txt): dependências Python.
+- [`scripts/run_pipeline.sh`](scripts/run_pipeline.sh): bootstrap para instalar deps, aplicar schema e executar o ETL.
 
 
 **Enriquecimento suportado no ETL:** KEGG, PubChem, ChEBI, HMDB e MeSH Tree.
