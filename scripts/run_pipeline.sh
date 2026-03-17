@@ -8,13 +8,8 @@ set -euo pipefail
 #
 # Etapas executadas (comportamento padrão):
 # 1) sobe os containers SQL (PostgreSQL + Adminer) via Docker Compose;
-<<<<<<< codex/organize-documentation-and-update-readme-rj19ox
 # 2) valida o interpretador Python do host;
 # 3) instala dependências Python no ambiente do host (opcional);
-=======
-# 2) valida o interpretador Python e prepara virtualenv;
-# 3) instala dependências Python (opcional);
->>>>>>> main
 # 4) aplica o schema SQL no PostgreSQL (opcional);
 # 5) valida arquivos de entrada do ETL;
 # 6) executa o pipeline Python (main.py).
@@ -23,13 +18,8 @@ set -euo pipefail
 #
 # Dependências/ferramentas utilizadas pelo script:
 # - docker compose: para subir PostgreSQL e Adminer (quando START_DOCKER=1)
-<<<<<<< codex/organize-documentation-and-update-readme-rj19ox
 # - python/python3: execução da aplicação
 # - pip (via python -m pip): instalação de dependências do requirements.txt
-=======
-# - python/python3 + venv: para ambiente isolado da aplicação
-# - pip: para instalação de dependências do requirements.txt
->>>>>>> main
 # - psql: para aplicação do schema SQL (quando APPLY_SCHEMA=1)
 # -----------------------------------------------------
 
@@ -43,10 +33,7 @@ DB_SCHEMA="${DB_SCHEMA:-quimioanalytics}"
 APPLY_SCHEMA="${APPLY_SCHEMA:-1}"     # 1=aplica schema, 0=não aplica
 INSTALL_DEPS="${INSTALL_DEPS:-1}"     # 1=instala deps, 0=não instala
 START_DOCKER="${START_DOCKER:-1}"     # 1=sobe containers SQL, 0=não sobe
-<<<<<<< codex/organize-documentation-and-update-readme-rj19ox
 PIP_INSTALL_MODE="${PIP_INSTALL_MODE:-user}"  # user=instala em ~/.local, system=instala global
-=======
->>>>>>> main
 
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 
@@ -63,10 +50,7 @@ echo "  DB_SCHEMA=${DB_SCHEMA}"
 echo "  START_DOCKER=${START_DOCKER}"
 echo "  APPLY_SCHEMA=${APPLY_SCHEMA}"
 echo "  INSTALL_DEPS=${INSTALL_DEPS}"
-<<<<<<< codex/organize-documentation-and-update-readme-rj19ox
 echo "  PIP_INSTALL_MODE=${PIP_INSTALL_MODE}"
-=======
->>>>>>> main
 
 if [[ "${START_DOCKER}" == "1" ]]; then
   echo "[INFO] Iniciando containers SQL (PostgreSQL + Adminer)..."
