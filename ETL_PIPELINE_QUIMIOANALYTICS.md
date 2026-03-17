@@ -44,11 +44,9 @@ requirements.txt
 ## Execução
 
 ```bash
+# local (virtualenv)
 pip install -r requirements.txt
 python main.py
-
-# ou execute bootstrap completo
-./scripts/run_pipeline.sh
 ```
 
 ## Colunas esperadas
