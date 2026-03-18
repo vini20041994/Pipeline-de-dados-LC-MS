@@ -57,10 +57,10 @@ pip install -r requirements.txt
 ### 4.2 Subir banco PostgreSQL em container
 
 ```bash
-docker compose up -d postgres adminer
+docker compose up -d postgres pgadmin
 ```
 
-Adminer (opcional): `http://localhost:8080`
+pgAdmin (opcional): `http://localhost:5050`
 
 ### 4.3 Aplicar schema no PostgreSQL
 
@@ -117,9 +117,11 @@ docker compose down
 
 - **`docker: command not found`**: instale Docker Desktop/Engine com Compose.
 - **Falha ao conectar no banco**: valide `DB_HOST`, `DB_PORT`, `DB_USER` e `DB_PASSWORD`.
-  - Se estiver usando **Adminer** (http://localhost:8080), configure:
-    - **Servidor**: `postgres`
+  - Se estiver usando **pgAdmin** (http://localhost:5050), crie um servidor com:
+    - **Hostname/address**: `postgres`
     - **Porta**: `5432`
-    - **Banco**: `quimioanalytics`
-    - **Usuário/Senha**: `postgres`
+    - **Maintenance DB**: `postgres`
+    - **Username**: `postgres`
+    - **Password**: `postgres`
+    - **Save password**: habilitado (opcional)
 - **Timeout em APIs externas**: tente novamente (enrichment depende de APIs públicas).

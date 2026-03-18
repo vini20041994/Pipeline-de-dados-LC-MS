@@ -14,16 +14,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  adminer:
-    image: adminer:4
-    container_name: quimioanalytics-sql
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: quimioanalytics-pgadmin
     restart: unless-stopped
     environment:
-      ADMINER_DEFAULT_SERVER: postgres
-      ADMINER_DEFAULT_DB: quimioanalytics
-      ADMINER_DEFAULT_USERNAME: postgres
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
     ports:
-      - "8080:8080"
+      - "5050:80"
     depends_on:
       - postgres
 
