@@ -1,6 +1,6 @@
 # Pipeline de dados LC-MS (QuimioAnalytics)
 
-Projeto de ETL para processar planilhas LC-MS, calcular ranking probabilístico Top 5 de candidatos moleculares, enriquecer metadados em bases públicas (PubChem, KEGG, ChEBI, HMDB e MeSH) e persistir os resultados em PostgreSQL.
+Projeto de ETL para processar planilhas LC-MS, calcular ranking probabilístico Top 5 de candidatos moleculares, enriquecer metadados em bases públicas (PubChem, KEGG, ChEBI, HMDB e MeSH) e persistir os resultados em PostgreSQL local.
 
 ## Objetivo
 
@@ -11,7 +11,7 @@ Este repositório implementa um fluxo fim a fim para análises quimioinformátic
 3. cálculo de score final e probabilidade posterior por candidato;
 4. seleção de Top 5 por sinal analítico;
 5. enriquecimento em bases externas;
-6. carga no banco PostgreSQL para exploração analítica.
+6. carga no banco PostgreSQL local para exploração analítica.
 
 ## Estrutura organizada do projeto
 
@@ -22,8 +22,7 @@ Este repositório implementa um fluxo fim a fim para análises quimioinformátic
 ├── docs/                      # Documentação técnica e funcional
 ├── etl/                       # Módulos de extração, transformação, score, enrich e load
 ├── examples/                  # Scripts de exemplo para cálculo Top 5
-├── sql/                       # Scripts SQL (schema e exemplos analíticos)
-├── docker-compose.yml         # Serviços postgres + pgadmin
+├── sql/                       # Script SQL de criação do schema
 ├── main.py                    # Orquestrador ETL
 ├── requirements.txt           # Dependências Python
 └── README.md                  # Guia principal do projeto
@@ -35,18 +34,18 @@ Este repositório implementa um fluxo fim a fim para análises quimioinformátic
 - **Módulos ETL**: `etl/`
 - **Configuração do banco**: `config/database.py`
 - **Schema SQL**: `sql/database_schema_postgresql.sql`
-- **Exemplo SQL (Top 5)**: `sql/SQL_CALCULO_TOP5_EXEMPLO.sql`
 - **Documentação consolidada**: `docs/README.md`
 
 ## Pré-requisitos
 
 - Python 3.10+
-- Docker + Docker Compose
+- PostgreSQL 15+ instalado localmente
+- Cliente `psql` disponível no terminal
 - Arquivos de entrada:
   - `data/identificacao.xlsx`
   - `data/abundancia.xlsx`
 
-## Execução (virtualenv + PostgreSQL em container)
+## Passo a passo de execução (sem containers)
 
 ### 1) Criar e ativar ambiente virtual
 
@@ -57,39 +56,38 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 2) Subir banco PostgreSQL
-
-```bash
-docker compose up -d postgres pgadmin
-```
-
-pgAdmin (opcional): `http://localhost:5050`
-
-### 3) Aplicar schema no PostgreSQL
-
-```bash
-docker exec -i quimioanalytics-db \
-  psql -U postgres -d quimioanalytics \
-  < sql/database_schema_postgresql.sql
-```
-
-### 4) Executar pipeline
+### 2) Configurar variáveis de ambiente
 
 ```bash
 export DB_USER=postgres
 export DB_PASSWORD=postgres
 export DB_HOST=localhost
-export DB_PORT=55432
+export DB_PORT=5432
 export DB_NAME=quimioanalytics
 export DB_SCHEMA=quimioanalytics
+```
 
+> Ajuste usuário/senha conforme a instalação local do seu PostgreSQL.
+
+### 3) Criar banco e aplicar schema manualmente
+
+```bash
+createdb -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" "$DB_NAME"
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+  -f sql/database_schema_postgresql.sql
+```
+
+### 4) Executar pipeline
+
+```bash
 python main.py
 ```
 
-### 5) Encerrar containers
+### 5) Validar dados carregados
 
 ```bash
-docker compose down
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+  -c "SELECT COUNT(*) AS total_candidates FROM quimioanalytics.molecule_candidate;"
 ```
 
 ## Variáveis de ambiente
@@ -97,7 +95,7 @@ docker compose down
 - `DB_USER` (default: `postgres`)
 - `DB_PASSWORD` (default: `postgres`)
 - `DB_HOST` (default: `localhost`)
-- `DB_PORT` (default: `55432`)
+- `DB_PORT` (default: `5432`)
 - `DB_NAME` (default: `quimioanalytics`)
 - `DB_SCHEMA` (default: `quimioanalytics`)
 
@@ -112,13 +110,7 @@ docker compose down
 
 ## Troubleshooting
 
-- **`docker: command not found`**: instale Docker Desktop/Engine com Compose.
+- **`psql: command not found`**: instale o cliente PostgreSQL e adicione ao `PATH`.
 - **Falha ao conectar no banco**: valide `DB_HOST`, `DB_PORT`, `DB_USER` e `DB_PASSWORD`.
-  - Se estiver usando **pgAdmin** (http://localhost:5050), crie um servidor com:
-    - **Hostname/address**: `postgres`
-    - **Porta**: `5432`
-    - **Maintenance DB**: `postgres`
-    - **Username**: `postgres`
-    - **Password**: `postgres`
-    - **Save password**: habilitado (opcional)
+- **`database "quimioanalytics" already exists`**: ignore o warning ou use `dropdb` antes de recriar.
 - **Timeout em APIs externas**: tente novamente (enrichment depende de APIs públicas).
