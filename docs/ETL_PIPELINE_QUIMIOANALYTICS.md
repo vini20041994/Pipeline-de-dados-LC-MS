@@ -29,7 +29,7 @@ requirements.txt
 
 ## Pré-requisitos
 
-- Banco PostgreSQL com schema aplicado (`database_schema_postgresql.sql`) (inclui `CREATE SCHEMA quimioanalytics` e `SET search_path`).
+- Banco PostgreSQL com schema aplicado (`../sql/database_schema_postgresql.sql`) (inclui `CREATE SCHEMA quimioanalytics` e `SET search_path`).
 - Arquivos Excel em `data/identificacao.xlsx` e `data/abundancia.xlsx`.
 
 ## Variáveis de ambiente
