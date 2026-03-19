@@ -32,11 +32,14 @@ class Loader:
         self.instrument = instrument
         self.description = description
 
-    def load(self, df: pd.DataFrame) -> None:
+    def load(self, df: pd.DataFrame) -> dict:
         """Persiste dados processados no schema relacional do projeto.
 
         Args:
             df: DataFrame final com sinais, candidatos, score e enriquecimento.
+
+        Returns:
+            Resumo da carga com contagens principais de registros persistidos.
         """
         with self.engine.begin() as conn:
             experiment_id = conn.execute(
@@ -98,9 +101,11 @@ class Loader:
                 ).scalar_one()
                 signal_cache[(row["sample_code"], str(row["signal_id"]))] = db_signal_id
 
+            replicate_count = 0
             replicate_cols = ["sample_code", "signal_id", "replicate_number", "abundance"]
             if all(col in df.columns for col in replicate_cols):
                 replicates = df[replicate_cols].dropna(subset=["replicate_number"]).drop_duplicates()
+                replicate_count = len(replicates)
                 for _, row in replicates.iterrows():
                     db_signal_id = signal_cache[(row["sample_code"], str(row["signal_id"]))]
                     conn.execute(
@@ -217,3 +222,12 @@ class Loader:
                         "ranking": int(row.get("ranking")) if pd.notna(row.get("ranking")) else None,
                     },
                 )
+
+        return {
+            "experiment_name": self.experiment_name,
+            "samples": len(sample_cache),
+            "signals": len(signal_cache),
+            "replicates": replicate_count,
+            "molecules": len(molecule_cache),
+            "candidates": len(df),
+        }

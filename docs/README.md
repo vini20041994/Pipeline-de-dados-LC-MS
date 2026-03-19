@@ -10,9 +10,8 @@ Este diretório centraliza toda a documentação do projeto.
 - [`MODELO_BANCO_QUIMIOANALYTICS.md`](MODELO_BANCO_QUIMIOANALYTICS.md): modelo relacional e dicionário lógico do banco.
 - [`ER_DIAGRAMA_QUIMIOANALYTICS.md`](ER_DIAGRAMA_QUIMIOANALYTICS.md): diagrama ER em Mermaid.
 
-## Artefatos SQL relacionados
+## Artefatos SQL
 
-Os scripts SQL ficam em `../sql/`:
+Os scripts SQL para o banco ficam em:
 
 - `../sql/database_schema_postgresql.sql`
-- `../sql/SQL_CALCULO_TOP5_EXEMPLO.sql`
