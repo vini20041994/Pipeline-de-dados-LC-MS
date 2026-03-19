@@ -90,6 +90,23 @@ psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -c "SELECT COUNT(*) AS total_candidates FROM quimioanalytics.molecule_candidate;"
 ```
 
+
+### Saídas geradas por etapa do ETL
+
+Após executar `python main.py`, o pipeline salva evidências em `outputs/`:
+
+- `outputs/01_extract_identification.csv`
+- `outputs/01_extract_abundance.csv`
+- `outputs/02_transform_identification.csv`
+- `outputs/02_transform_abundance.csv`
+- `outputs/02_transform_merged.csv`
+- `outputs/03_score_scored.csv`
+- `outputs/04_score_top5.csv`
+- `outputs/05_enrich_enriched.csv`
+- `outputs/06_load_summary.json`
+
+Esses arquivos mostram o resultado de cada código ETL (`extract`, `transform`, `score`, `enrich` e `load`).
+
 ## Variáveis de ambiente
 
 - `DB_USER` (default: `postgres`)
